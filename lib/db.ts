@@ -80,7 +80,7 @@ export async function verifyPassword(password: string, hashedPassword: string) {
 // Fonction pour récupérer l'email d'un utilisateur à partir de son ID
 export async function getUserByEmail(email: string) {
     try {
-        const queryText = `SELECT * FROM users WHERE email = $1`;
+        const queryText = `SELECT id, email, password_hash, onboarding_completed FROM users WHERE email = $1`;
         const result = await pool.query(queryText, [email]);
         return result.rows[0];
     } catch (error) {

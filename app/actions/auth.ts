@@ -33,7 +33,15 @@ export async function login(formData: FormData) {
             maxAge: 60 * 60 * 24 * 7, // 1 week
         });
 
-        return { success: true, user: { id: user.id, email: user.email } };
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                onboardingCompleted: user.onboarding_completed,
+            },
+            redirectTo: user.onboarding_completed ? "/dashboard" : "/onboarding",
+        };
     } catch (error) {
         console.error("Login error:", error);
         return { error: "An error occurred during login" };
