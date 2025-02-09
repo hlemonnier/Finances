@@ -6,7 +6,6 @@ import { GalleryVerticalEnd } from "lucide-react"
 import { LoginForm } from "../../components/login-form"
 import { SignUpForm } from "../../components/signup-form"
 import { LanguageSwitcher } from "../../components/language-switcher"
-import { OnboardingShortcut } from "../../components/onboarding-shortcut"
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,7 +22,6 @@ export default function LoginPage() {
           </a>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <OnboardingShortcut />
           </div>
         </div>
         <div className="flex flex-1 items-center justify-center">
