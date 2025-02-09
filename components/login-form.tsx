@@ -2,6 +2,7 @@
 
 import { useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,15 +28,10 @@ export function LoginForm({
       if (result.error) {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: t("login.errorTitle"),
           description: result.error,
         })
       } else if (result.success) {
-        toast({
-          title: "Success",
-          description: "You have been logged in successfully",
-        })
-        // Redirect based on onboarding status
         router.push(result.redirectTo)
       }
     })
@@ -45,7 +41,7 @@ export function LoginForm({
       <form action={handleSubmit} className={cn("flex flex-col gap-6", className)} {...props}>
         <div className="flex flex-col items-center gap-2 text-center">
           <h1 className="text-2xl font-bold">{t("login.title")}</h1>
-          <p className="text-balance text-sm text-muted-foreground">{t("login.emailLabel")}</p>
+          <p className="text-balance text-sm text-muted-foreground">{t("login.subtitle")}</p>
         </div>
         <div className="grid gap-6">
           <div className="grid gap-2">
@@ -53,16 +49,16 @@ export function LoginForm({
             <Input id="email" name="email" type="email" placeholder={t("common.emailPlaceholder")} required />
           </div>
           <div className="grid gap-2">
-            <div className="flex items-center">
+            <div className="flex items-center justify-between">
               <Label htmlFor="password">{t("login.passwordLabel")}</Label>
-              <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
+              <Link href="/forgot-password" className="text-sm underline-offset-4 hover:underline">
                 {t("login.forgotPassword")}
-              </a>
+              </Link>
             </div>
             <Input id="password" name="password" type="password" required />
           </div>
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Logging in..." : t("login.loginButton")}
+            {isPending ? t("login.loggingIn") : t("login.loginButton")}
           </Button>
           <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
             <span className="relative z-10 bg-background px-2 text-muted-foreground">{t("login.orContinueWith")}</span>

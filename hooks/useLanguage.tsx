@@ -18,8 +18,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const keys = key.split(".")
     let value: any = translations[language]
     for (const k of keys) {
-      value = value[k]
-      if (!value) return key
+      value = value?.[k]
+      if (value === undefined) return key
     }
     return value
   }

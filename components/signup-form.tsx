@@ -22,8 +22,28 @@ export function SignUpForm({
   const [password, setPassword] = useState("")
   const { t } = useLanguage()
   const router = useRouter()
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const doPasswordsMatch = password === confirmPassword
+  const calculateStrength = (pass: string): number => {
+    let strength = 0
+    if (pass.length >= 8) strength += 25
+    if (/\d/.test(pass)) strength += 25
+    if (/[a-z]/.test(pass)) strength += 25
+    if (/[A-Z]/.test(pass) || /[^A-Za-z0-9]/.test(pass)) strength += 25
+    return strength
+  }
+  const isPasswordStrong = calculateStrength(password) === 100
+  const isFormValid = isPasswordStrong && doPasswordsMatch && password.length > 0
 
   async function handleSubmit(formData: FormData) {
+    if (!isFormValid) {
+      toast({
+        variant: "destructive",
+        title: t("signup.errorTitle"),
+        description: !isPasswordStrong ? t("signup.weakPassword") : t("signup.passwordsMismatch"),
+      })
+      return
+    }
     startTransition(async () => {
       const result = await signup(formData)
       if (result.error) {
@@ -33,10 +53,6 @@ export function SignUpForm({
           description: result.error,
         })
       } else if (result.success) {
-        toast({
-          title: "Success",
-          description: "Your account has been created successfully",
-        })
         router.push("/onboarding")
       }
     })
@@ -59,10 +75,31 @@ export function SignUpForm({
         </div>
         <div className="grid gap-2">
           <Label htmlFor="password">{t("signup.passwordLabel")}</Label>
-          <Input id="password" name="password" type="password" required onChange={(e) => setPassword(e.target.value)} />
+          <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="confirmPassword">{t("signup.confirmPasswordLabel")}</Label>
+          <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          {confirmPassword && !doPasswordsMatch && (
+              <p className="text-sm text-destructive">{t("signup.passwordsMismatch")}</p>
+          )}
           <PasswordStrengthIndicator password={password} />
         </div>
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <Button type="submit" className="w-full" disabled={isPending || !isFormValid}>
           {isPending ? "Creating account..." : t("signup.signUpButton")}
         </Button>
         <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">

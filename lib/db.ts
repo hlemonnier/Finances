@@ -89,6 +89,18 @@ export async function getUserByEmail(email: string) {
     }
 }
 
+export async function updateUserPassword(userId: string, hashedPassword: string) {
+    try {
+        await pool.query(
+            "UPDATE users SET password_hash = $1 WHERE id = $2",
+            [hashedPassword, userId]
+        );
+    } catch (error) {
+        console.error("Error updating user password:", error);
+        throw new Error("Error updating user password");
+    }
+}
+
 
 // Export du pool pour pouvoir l'utiliser directement dans d'autres modules si besoin
 export { pool };
