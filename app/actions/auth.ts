@@ -1,39 +1,29 @@
-// Financebro/app/actions/auth.ts
-"use server";
+"use server"
 
-import {cookies} from "next/headers";
-import { createUser, getUserByEmail, verifyPassword, updateUserPassword,pool } from "@/lib/db"
-import {v4 as uuidv4} from "uuid";
-import bcrypt from "bcryptjs";
+import { cookies } from "next/headers"
+import { createClient } from "@vercel/postgres"
+import { createUser, getUserByEmail, verifyPassword, updateUserPassword } from "@/lib/db"
+import { v4 as uuidv4 } from "uuid"
+import bcrypt from "bcryptjs"
+import { setUserSession, clearUserSession } from "@/lib/auth"
+import { redirect } from "next/navigation"
 
 export async function login(formData: FormData) {
     try {
-        const email = formData.get("email") as string;
-        const password = formData.get("password") as string;
+        const email = formData.get("email") as string
+        const password = formData.get("password") as string
 
         if (!email || !password) {
-            return {error: "Email and password are required"};
+            return { error: "Please provide both email and password" }
         }
 
-        // Retrieve the user using the email address
-        const user = await getUserByEmail(email);
-        if (!user) {
-            return {error: "Invalid credentials"};
+        const user = await getUserByEmail(email)
+        if (!user || !(await verifyPassword(password, user.password_hash))) {
+            return { error: "Invalid email or password" }
         }
 
-        // Verify the password using the hashed password stored in the DB
-        const isValid = await verifyPassword(password, user.password_hash);
-        if (!isValid) {
-            return {error: "Invalid credentials"};
-        }
-
-        // Set a session cookie with the user ID
-        cookies().set("user_id", user.id.toString(), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 60 * 60 * 24 * 7, // 1 week
-        });
+        // Set the session
+        await setUserSession(user.id.toString())
 
         return {
             success: true,
@@ -43,99 +33,116 @@ export async function login(formData: FormData) {
                 onboardingCompleted: user.onboarding_completed,
             },
             redirectTo: user.onboarding_completed ? "/dashboard" : "/onboarding",
-        };
+        }
     } catch (error) {
-        console.error("Login error:", error);
-        return {error: "An error occurred during login"};
+        console.error("Login error:", error)
+        return { error: "An unexpected error occurred. Please try again." }
     }
 }
 
 export async function signup(formData: FormData) {
     try {
-        const firstName = formData.get("firstName") as string;
-        const email = formData.get("email") as string;
-        const password = formData.get("password") as string;
+        const firstName = formData.get("firstName") as string
+        const email = formData.get("email") as string
+        const password = formData.get("password") as string
 
         if (!firstName || !email || !password) {
-            return {error: "All fields are required"};
+            return { error: "Please fill in all required fields" }
         }
 
-        // Check if the email is already registered
-        const existingUser = await getUserByEmail(email);
+        const existingUser = await getUserByEmail(email)
         if (existingUser) {
-            return {error: "Email already exists"};
+            return { error: "An account with this email already exists" }
         }
 
-        // Create the new user
-        const user = await createUser(firstName, email, password);
+        const user = await createUser(firstName, email, password)
 
-        // Set a session cookie with the new user's ID
+        // Set a session cookie
         cookies().set("user_id", user.id.toString(), {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-            maxAge: 60 * 60 * 24, // 1 week
-        });
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+        })
 
-        return {success: true, user};
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                onboardingCompleted: false,
+            },
+            redirectTo: "/onboarding",
+        }
     } catch (error) {
-        console.error("Signup error:", error);
-        return {error: "An error occurred during signup"};
+        console.error("Signup error:", error)
+        return { error: "An unexpected error occurred. Please try again." }
     }
 }
 
 export async function requestPasswordReset(email: string) {
+    const client = createClient()
     try {
-        // Check if the user exists
-        const user = await getUserByEmail(email);
+        await client.connect()
+
+        const user = await getUserByEmail(email)
         if (!user) {
-            return {error: "User not found"};
+            return { error: "No account found with this email address" }
         }
 
-        // Generate a unique reset token
-        const resetToken = uuidv4();
-        const expiresAt = new Date(Date.now() + 3600000); // Token expires in 1 hour
+        const resetToken = uuidv4()
+        const expiresAt = new Date(Date.now() + 3600000) // Token expires in 1 hour
 
-        // Store the reset token in the database using the pg pool
-        await pool.query(
-            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
-            [user.id, resetToken, expiresAt]
-        );
+        await client.query("INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)", [
+            user.id,
+            resetToken,
+            expiresAt,
+        ])
 
         // TODO: Send an email with the reset link
-        // For now, log the reset link for debugging purposes.
-        console.log(`Password reset link: http://localhost:3000/reset-password?token=${resetToken}`);
+        console.log(`Password reset link: http://localhost:3000/reset-password?token=${resetToken}`)
 
-        return {success: true};
+        return { success: true }
     } catch (error) {
-        console.error("Password reset request error:", error);
-        return {error: "An error occurred while processing your request"};
+        console.error("Password reset request error:", error)
+        return { error: "An unexpected error occurred. Please try again." }
+    } finally {
+        await client.end()
     }
 }
 
 export async function resetPassword(token: string, newPassword: string) {
+    const client = createClient()
     try {
-        const result = await pool.query(
+        await client.connect()
+
+        const result = await client.query(
             "SELECT user_id FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()",
-            [token]
-        );
+            [token],
+        )
 
         if (result.rows.length === 0) {
-            return { error: "Invalid or expired reset token" };
+            return { error: "Invalid or expired reset token" }
         }
 
-        const userId = result.rows[0].user_id;
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const userId = result.rows[0].user_id
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-        // Update the user's password
-        await updateUserPassword(userId, hashedPassword);
+        await updateUserPassword(userId, hashedPassword)
 
-        // Delete the used reset token
-        await pool.query("DELETE FROM password_reset_tokens WHERE token = $1", [token]);
+        await client.query("DELETE FROM password_reset_tokens WHERE token = $1", [token])
 
-        return { success: true };
+        return { success: true }
     } catch (error) {
-        console.error("Password reset error:", error);
-        return { error: "An unexpected error occurred. Please try again." };
+        console.error("Password reset error:", error)
+        return { error: "An unexpected error occurred. Please try again." }
+    } finally {
+        await client.end()
     }
 }
+
+export async function logout() {
+    await clearUserSession()
+    redirect("/login")
+}
+

@@ -1,12 +1,11 @@
-import type {Metadata} from "next"
-import {Inter} from "next/font/google"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
-import {Toaster} from "@/components/ui/toaster"
-import {LanguageProvider} from "@/hooks/useLanguage"
-import {ThemeProvider} from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
+import { LanguageProvider } from "@/hooks/useLanguage"
 import type React from "react"
 
-const inter = Inter({subsets: ["latin"]})
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
     title: "Finance Bro Inc.",
@@ -19,14 +18,12 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-            <LanguageProvider>
-                {children}
-                <Toaster/>
-            </LanguageProvider>
-        </ThemeProvider>
+        <html lang="en" className={inter.className} suppressHydrationWarning>
+        <body>
+        <LanguageProvider>
+            {children}
+            <Toaster />
+        </LanguageProvider>
         </body>
         </html>
     )
